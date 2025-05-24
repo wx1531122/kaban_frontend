@@ -1,0 +1,296 @@
+/* General Board Styles */
+.project-board {
+  padding: var(--spacing-unit);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-unit); 
+}
+
+/* Add Stage Form is now a .form-container, styled in App.css */
+/* .add-stage-form specific styles can be removed if covered by .form-container */
+.add-stage-form { /* Keeping for potential specific tweaks if needed, but should be minimal */
+  display: flex; /* This is good for inline form */
+  gap: calc(var(--spacing-unit) / 2);
+  align-items: center;
+}
+/* .add-stage-form input[type="text"] and button are covered by global styles */
+
+
+/* Task Modal Styles - Largely relying on global form/button styles from App.css */
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5); /* Slightly lighter backdrop */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: #fff;
+  padding: calc(var(--spacing-unit) * 1.5);
+  border-radius: var(--border-radius);
+  box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
+  width: 90%;
+  max-width: 500px;
+  z-index: 1001;
+}
+
+.modal-content h3 { /* Already covered by global h3, but can tweak if needed */
+  margin-bottom: var(--spacing-unit);
+  text-align: center;
+  font-size: 1.75rem; /* Slightly larger for modal title */
+}
+/* .modal-content form div (form-group) and label are covered by global styles */
+/* .modal-content form input, textarea are covered by global styles */
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: calc(var(--spacing-unit) / 2);
+  margin-top: var(--spacing-unit);
+}
+/* .modal-actions button styling is covered by .btn and its variants in App.css */
+
+
+.board-header {
+  background-color: var(--light-color);
+  padding: var(--spacing-unit);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+  margin-bottom: var(--spacing-unit);
+}
+/* .board-header h2, p, .back-link are covered by global typography and .btn */
+
+
+/* Stages Container */
+.stages-container {
+  display: flex;
+  flex-direction: row;
+  gap: var(--spacing-unit);
+  overflow-x: auto;
+  padding-bottom: var(--spacing-unit); /* For scrollbar visibility */
+  min-height: 300px; /* Ensure some height even if empty */
+}
+
+/* Stage Column Styles */
+.stage-column {
+  background-color: var(--light-color); 
+  border-radius: var(--border-radius);
+  padding: var(--spacing-unit);
+  min-width: 300px; 
+  max-width: 350px; 
+  flex: 0 0 auto; 
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-unit);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.05); /* Softer shadow */
+}
+
+.stage-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: calc(var(--spacing-unit) / 2);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.stage-header h3 { /* Stage name */
+  color: var(--text-color);
+  font-size: 1.25rem; /* Consistent with form-container h3 */
+  cursor: pointer;
+  flex-grow: 1;
+  padding: calc(var(--spacing-unit) / 3);
+  border-radius: var(--border-radius);
+  margin:0; /* Reset margin for h3 inside flex */
+}
+.stage-header h3:hover {
+  background-color: #e9ecef; /* Slightly darker than --light-color */
+}
+
+/* .stage-header input[type="text"] for editing name uses global input styles */
+.stage-header input[type="text"] {
+  font-size: 1.25rem; /* Match h3 */
+  margin-right: calc(var(--spacing-unit) /2);
+}
+
+.stage-actions {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing-unit) / 3); /* Smaller gap for icon buttons */
+}
+/* .stage-actions button styling is covered by .btn .btn-sm and variants */
+
+/* Tasks List Styles */
+.tasks-list {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing-unit) / 1.5); /* Slightly smaller gap for tasks */
+  min-height: 100px;
+  background-color: #fff; /* White background for tasks area inside stage */
+  padding: calc(var(--spacing-unit) / 1.5);
+  border-radius: var(--border-radius);
+  flex-grow: 1;
+  overflow-y: auto; /* Scroll for long task lists */
+}
+
+.task-card {
+  background-color: #fff;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: calc(var(--spacing-unit) * 0.75); /* Consistent padding */
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing-unit) / 2);
+}
+
+.task-content p {
+  margin: 0 0 calc(var(--spacing-unit) / 4) 0;
+  font-size: 1rem; 
+  color: var(--text-color);
+  word-wrap: break-word;
+}
+.task-content p strong {
+  font-weight: 500; /* Slightly less than default bold */
+}
+
+.task-detail {
+  font-size: 0.8rem; /* Smaller for details */
+  color: var(--text-muted-color);
+  margin: 2px 0;
+}
+
+.task-actions {
+  display: flex;
+  flex-wrap: wrap; 
+  gap: calc(var(--spacing-unit) / 3); 
+  margin-top: auto; 
+  padding-top: calc(var(--spacing-unit) / 2); 
+  border-top: 1px solid var(--light-color); 
+}
+/* .task-actions button styling is covered by .btn .btn-sm and variants */
+/* .add-task-button is covered by .btn .btn-success .btn-sm */
+
+
+.no-tasks-message {
+  color: var(--text-muted-color);
+  font-style: italic;
+  text-align: center;
+  padding: var(--spacing-unit);
+}
+
+/* Removed .loading-message and .error-message as they are covered by .alert in App.css */
+
+/* Subtask Section Styles */
+.subtasks-section {
+  margin-top: calc(var(--spacing-unit) / 2);
+  padding-top: calc(var(--spacing-unit) / 2);
+  border-top: 1px dashed var(--border-color);
+}
+
+/* .toggle-subtasks-button uses .btn .btn-light .btn-sm */
+.toggle-subtasks-button { 
+  margin-bottom: calc(var(--spacing-unit) / 2);
+  display: block; 
+  width: 100%; /* Make toggle full width of its container */
+}
+
+.subtask-list { /* list-unstyled is applied in JSX */
+  margin-top: calc(var(--spacing-unit) / 2);
+}
+
+.subtask-item {
+  display: flex;
+  align-items: center;
+  padding: calc(var(--spacing-unit) / 3) 0;
+  border-bottom: 1px solid #f5f5f5; /* Lighter border */
+  gap: calc(var(--spacing-unit) / 2);
+}
+.subtask-item:last-child { border-bottom: none; }
+
+.subtask-item.completed .subtask-content-text {
+  text-decoration: line-through;
+  color: var(--text-muted-color);
+}
+
+.subtask-item input[type="checkbox"] {
+  margin-right: calc(var(--spacing-unit) / 3);
+  flex-shrink: 0;
+}
+
+.subtask-content-text {
+  flex-grow: 1;
+  font-size: 0.875rem; /* Slightly smaller than task content */
+  cursor: pointer;
+}
+
+/* .subtask-edit-input uses global input styles */
+.subtask-edit-input {
+  font-size: 0.875rem;
+  padding: 0.25rem 0.4rem; /* Smaller padding for inline edit */
+}
+
+.subtask-actions {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing-unit) / 4);
+  flex-shrink: 0;
+}
+/* .subtask-actions button uses .btn .btn-sm and variants */
+
+/* .add-subtask-form-container uses .form-group */
+.add-subtask-form-container {
+  display: flex; /* Keep this for inline input+button */
+  gap: calc(var(--spacing-unit) / 2);
+  padding-top: calc(var(--spacing-unit) / 2);
+  margin-top: calc(var(--spacing-unit) / 2);
+  border-top: 1px dashed var(--border-color);
+}
+/* .add-subtask-input uses global input styling, maybe add .input-sm if created */
+/* .add-subtask-submit-button uses .btn .btn-success .btn-sm */
+
+
+/* Responsiveness */
+@media (max-width: 768px) { /* Tablet and smaller */
+  .stages-container {
+    flex-direction: column;
+    overflow-x: visible;
+    align-items: stretch; /* Make columns take full width */
+  }
+  .stage-column {
+    min-width: 100%; /* Full width for stage columns */
+    max-width: 100%;
+    margin-bottom: var(--spacing-unit); /* Add margin between stacked stages */
+  }
+  .project-board {
+    padding: calc(var(--spacing-unit) / 2); /* Reduce padding on smaller screens */
+  }
+  .modal-content { /* Ensure modal is not too wide on small screens */
+    max-width: 95%; 
+  }
+}
+
+@media (max-width: 480px) { /* Mobile specific */
+  .board-header h2 {
+    font-size: 1.5rem; /* Reduce header font size */
+  }
+  .stage-header h3 {
+    font-size: 1.1rem; /* Reduce stage name font size */
+  }
+  .task-content p {
+    font-size: 0.9rem; /* Reduce task content font size */
+  }
+  .btn, .btn-sm { /* Make buttons a bit smaller on very small screens */
+    font-size: 0.8rem;
+    padding: 0.3rem 0.6rem;
+  }
+  .modal-content {
+     padding: var(--spacing-unit);
+  }
+}

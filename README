@@ -1,6 +1,132 @@
-我需要实现项目看板的前端，最终整合成一个完整的项目，后端已实现API如下：
+# Project Kanban Board
 
-## API Interface Document
+## Overview
+
+A Kanban board application for managing projects, stages, tasks, and subtasks. This application provides a visual way to track project progress from conception to completion. The frontend is built with React using Vite, offering a fast and modern development experience, and it communicates with a backend server to persist data.
+
+## Features
+
+*   **Project Management:**
+    *   Create new projects with names and descriptions.
+    *   View a list of all existing projects.
+    *   Navigate to a detailed Kanban board view for each project.
+    *   Delete projects (which also removes all associated stages, tasks, and subtasks).
+*   **Stage Management (within a Project Board):**
+    *   Create new stages (e.g., "To Do", "In Progress", "Done").
+    *   Rename existing stages.
+    *   Reorder stages within the project board.
+    *   Delete stages (which also removes all associated tasks and subtasks).
+*   **Task Management (within Stages):**
+    *   Create new tasks with content, assignee, start date, and end date.
+    *   Edit task details through a modal form.
+    *   Move tasks between different stages.
+    *   Reorder tasks within a single stage.
+    *   Delete tasks (which also removes all associated subtasks).
+*   **Subtask Management (within Tasks):**
+    *   Create new subtasks with content.
+    *   Edit subtask content inline.
+    *   Toggle the completion status of subtasks.
+    *   Delete subtasks.
+*   **User Interface:**
+    *   Responsive design for usability on various screen sizes (desktop, tablet, mobile).
+    *   User-friendly interface for managing complex project structures.
+    *   Loading states and error messages for backend interactions.
+    *   Test button to check backend connectivity (`/hello` endpoint).
+
+## Prerequisites
+
+*   **Frontend:**
+    *   [Node.js](https://nodejs.org/) (LTS version recommended, e.g., 18.x or later)
+    *   `npm` (comes with Node.js) or `yarn`
+*   **Backend:**
+    *   A running backend server as per the [Backend API Specification](#backend-api-specification) provided below.
+    *   (Example: Python 3.x, Flask, and any dependencies listed in the backend's `requirements.txt`)
+
+## Backend Setup & Running (Placeholder Instructions)
+
+**Note:** The following are *example* instructions. Please replace these with the actual setup steps for your specific backend implementation if it differs.
+
+1.  **Clone the Repository:**
+    ```bash
+    # If backend is in the same repository
+    git clone <repository-url>
+    cd <repository-name>
+    ```
+2.  **Navigate to Backend Directory:**
+    ```bash
+    cd backend_directory 
+    # (Replace 'backend_directory' with the actual path to your backend code)
+    ```
+3.  **Install Dependencies:**
+    (This assumes a Python/Flask backend; adjust for your backend technology)
+    ```bash
+    # Example: Create a virtual environment (optional but recommended)
+    python -m venv venv
+    source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+    # Example: Install dependencies
+    pip install -r requirements.txt 
+    ```
+4.  **Initialize Database (if applicable):**
+    (Your backend might have specific commands to set up the database)
+    ```bash
+    # Example: flask db init, flask db migrate, flask db upgrade
+    ```
+5.  **Run the Backend Server:**
+    ```bash
+    # Example for Flask
+    flask run
+    # Or for a simple Python script
+    # python app.py
+    ```
+6.  **Verify Backend:**
+    *   The backend server is typically expected to run on `http://localhost:5000`. This is the default target for the frontend's Vite proxy.
+    *   You can test the `/hello` endpoint (e.g., by opening `http://localhost:5000/hello` in your browser or using the "Test Backend /hello" button in the frontend app) to ensure it's running correctly.
+
+## Frontend Setup & Running
+
+1.  **Navigate to Frontend Directory:**
+    ```bash
+    cd frontend
+    ```
+2.  **Install Dependencies:**
+    Using npm:
+    ```bash
+    npm install
+    ```
+    Or using yarn:
+    ```bash
+    yarn install
+    ```
+3.  **Start the Development Server:**
+    Using npm:
+    ```bash
+    npm run dev
+    ```
+    Or using yarn:
+    ```bash
+    yarn dev
+    ```
+4.  **Access the Application:**
+    *   The application will typically be available at `http://localhost:5173` (Vite's default port).
+    *   The frontend is configured to proxy API requests starting with `/api` and `/hello` to the backend server (assumed to be at `http://localhost:5000`). Ensure your backend is running and accessible at this address.
+
+5.  **Build for Production (Optional):**
+    Using npm:
+    ```bash
+    npm run build
+    ```
+    Or using yarn:
+    ```bash
+    yarn build
+    ```
+    This will create a `dist` folder in the `frontend` directory with the optimized static assets.
+
+---
+
+## Backend API Specification
+
+The original content of the README started here. It has been preserved below.
 
 All API endpoints are prefixed with `/api`. Timestamps in responses are in ISO8601 format ending with 'Z' to denote UTC (e.g., `YYYY-MM-DDTHH:MM:SS.ffffffZ`).
 
