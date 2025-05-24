@@ -391,6 +391,452 @@ The relevant part of your `frontend/nginx.conf` should be modified as follows:
 
 ---
 
+## Deploying to a Cloud Server with Docker
+
+This section provides guidance on deploying the containerized frontend application (and potentially the backend, if using Docker Compose) to a cloud server.
+
+### Cloud Server Prerequisites
+
+Before deploying the application to a cloud server using Docker, ensure the following prerequisites are met on your chosen cloud virtual machine (VM) or server instance:
+
+1.  **Docker Engine:**
+    *   Docker Engine must be installed on the cloud server's operating system. This is the core runtime that enables Docker containers to run.
+    *   Official installation instructions can be found at: [https://docs.docker.com/engine/install/](https://docs.docker.com/engine/install/)
+    *   The specific installation steps will vary depending on your server's Linux distribution (e.g., Ubuntu, CentOS, Debian) or operating system. Follow the guide relevant to your server's OS.
+
+2.  **Docker Compose (if using `docker-compose.yml`):**
+    *   If you plan to use the `docker-compose.yml` file provided in this guide to manage both frontend and backend services, you will need Docker Compose.
+    *   It's recommended to use Docker Compose V2, which is typically included with Docker Desktop. For Linux servers, it's often installed as a plugin for Docker Engine.
+    *   Official installation instructions can be found at: [https://docs.docker.com/compose/install/](https://docs.docker.com/compose/install/)
+
+3.  **User Permissions for Docker (Optional but Recommended):**
+    *   To run Docker commands without needing `sudo` for every command, it's common practice to add your server user to the `docker` group.
+    *   You can do this with the command:
+        ```bash
+        sudo usermod -aG docker $USER
+        ```
+    *   **Important:** After running this command, you will likely need to start a new login session for this change to take effect (e.g., log out and log back in, or close and reopen your SSH session).
+
+4.  **Cloud Provider Specifics:**
+    *   Note that many cloud providers (AWS, Google Cloud, Azure, etc.) offer their own managed container services (e.g., Amazon ECS, Google Kubernetes Engine, Azure Kubernetes Service, Azure Container Instances) or provide VM images that come with Docker pre-installed. These can sometimes simplify the setup process.
+    *   The prerequisites listed here assume you are setting up Docker on a generic cloud VM. If you are using a managed container service, refer to your cloud provider's documentation.
+
+### Transferring Project Files to Cloud Server
+
+To deploy your application using Docker on a cloud server, you first need to transfer the necessary project files from your local development environment to the server.
+
+#### Required Files for Deployment
+
+Ensure the following files and directories are present on your cloud server:
+
+*   **`frontend/` directory:** The entire `frontend` directory is required. This includes:
+    *   All frontend source code (React components, services, CSS, etc.).
+    *   The `Dockerfile` located at `frontend/Dockerfile`.
+    *   The Nginx configuration file `frontend/nginx.conf`.
+*   **`docker-compose.yml` (if using Docker Compose):**
+    *   This file should be placed in the project's root directory on the server (i.e., the parent directory of the `frontend` folder).
+
+#### Method 1: Using `git clone` (Recommended)
+
+If your project is hosted in a Git repository (e.g., on GitHub, GitLab, Bitbucket), this is generally the easiest and most common method. It also simplifies updates.
+
+1.  **SSH into your cloud server:**
+    ```bash
+    ssh your_user@your_cloud_server_ip
+    ```
+    (Replace `your_user` and `your_cloud_server_ip` with your actual server username and IP address/hostname).
+
+2.  **Clone your repository:**
+    Navigate to the directory where you want to place your project (e.g., `/opt`, `/srv`, or your home directory) and then clone the repository.
+    ```bash
+    git clone <your_repository_url>
+    ```
+    (Replace `<your_repository_url>` with the actual URL of your Git repository).
+
+3.  **Navigate into the project directory:**
+    ```bash
+    cd <project_directory_name>
+    ```
+    (Replace `<project_directory_name>` with the name of the directory created by `git clone`).
+
+*   **Note:** If your backend code is in the same repository, it will also be cloned. This is usually the intended behavior for a full-stack deployment.
+
+#### Method 2: Using `scp` (Secure Copy)
+
+`scp` allows you to securely copy files and directories between your local machine and a remote server.
+
+1.  **Copy the `frontend` directory (recursively):**
+    From your *local machine's terminal*, run:
+    ```bash
+    scp -r /path/to/your/local/project/frontend your_user@your_cloud_server_ip:/path/to/remote/project_root/
+    ```
+    *   `-r`: Recursively copies directories.
+    *   `/path/to/your/local/project/frontend`: The path to your local `frontend` directory.
+    *   `your_user@your_cloud_server_ip:/path/to/remote/project_root/`: The destination path on your server. The `frontend` directory will be created inside `project_root`.
+
+2.  **Copy the `docker-compose.yml` file:**
+    From your *local machine's terminal*, run:
+    ```bash
+    scp /path/to/your/local/project/docker-compose.yml your_user@your_cloud_server_ip:/path/to/remote/project_root/
+    ```
+    *   `/path/to/your/local/project/docker-compose.yml`: The path to your local `docker-compose.yml` file.
+    *   `your_user@your_cloud_server_ip:/path/to/remote/project_root/`: The destination path on your server where `docker-compose.yml` should reside.
+
+#### Method 3: Using `rsync`
+
+`rsync` is a versatile tool for synchronizing files and directories. It's particularly efficient for updates as it only transfers the differences.
+
+1.  **Sync the `frontend` directory:**
+    From your *local machine's terminal*, run:
+    ```bash
+    rsync -avz /path/to/your/local/project/frontend/ your_user@your_cloud_server_ip:/path/to/remote/project_root/frontend/
+    ```
+    *   `-a` (archive): Preserves permissions, ownership, timestamps, etc., and implies recursive.
+    *   `-v` (verbose): Shows details of the transfer.
+    *   `-z` (compress): Compresses file data during transfer.
+    *   **Note the trailing slashes:**
+        *   `/path/to/your/local/project/frontend/` (with slash): Copies the *contents* of the local `frontend` directory into the remote `frontend` directory.
+        *   If you omit the trailing slash on the source (`.../frontend`), it would copy the `frontend` directory itself *into* the destination.
+
+2.  **Sync the `docker-compose.yml` file:**
+    From your *local machine's terminal*, run:
+    ```bash
+    rsync -avz /path/to/your/local/project/docker-compose.yml your_user@your_cloud_server_ip:/path/to/remote/project_root/docker-compose.yml
+    ```
+
+#### Choosing a Method
+
+*   **`git clone`**: Preferred for projects under version control, especially if you plan to pull updates to the server regularly.
+*   **`scp`**: Simple and effective for one-time copies or when Git is not used.
+*   **`rsync`**: Excellent for initial transfers and very efficient for subsequent updates, as it minimizes data transfer. It's also good for more complex synchronization needs.
+
+After transferring the files, you can proceed with building Docker images and running containers on your cloud server as described in the subsequent sections.
+
+### Making the Docker Image Available on the Server
+
+Once your project files are on the cloud server, you need to make the Docker images (especially `kanban-frontend:latest` and your backend image `kanban-app:latest`) available on that server.
+
+Choose one of the following methods:
+
+#### Option A: Build Image Directly on the Cloud Server
+
+This is a straightforward method if your cloud server has enough resources (CPU, RAM, disk space) and the necessary build tools (like Node.js for the frontend, though the multi-stage Dockerfile for the frontend mitigates this by including Node in the build stage).
+
+1.  **Ensure Project Files are Present:**
+    Make sure you've transferred the `frontend` directory (containing the `Dockerfile` and `nginx.conf`) and any backend source code (if you're also building the backend image on the server) to your cloud server.
+2.  **Build the Frontend Image:**
+    Navigate to the `frontend` directory on your server and run the build command:
+    ```bash
+    cd /path/to/your-project/frontend
+    docker build -t kanban-frontend:latest .
+    ```
+3.  **Build/Ensure Backend Image:**
+    *   If you are also building your backend image on the server, navigate to your backend's source directory and use its `Dockerfile` to build it (e.g., `docker build -t kanban-app:latest .`).
+    *   If you are using a pre-built backend image from a registry, you'll pull it later (see Option B or Docker Compose usage).
+
+**Pros:**
+*   Simplicity: Fewer steps if you're already on the server with the code.
+*   No external Docker registry dependency for the build step.
+
+**Cons:**
+*   Resource Usage: Building images can be resource-intensive on the server.
+*   Isolation: The image is only available on that specific server unless pushed to a registry.
+*   Build Environment: May require build tools on the server (though the multi-stage frontend Dockerfile includes Node.js for its build stage).
+
+#### Option B: Push to and Pull from a Docker Registry (Recommended)
+
+This method is more robust, scalable, and common in CI/CD pipelines and production environments. It involves building the image on your local machine (or a dedicated build server) and then pushing it to a Docker registry. The cloud server then pulls the image from the registry.
+
+**1. On Your Local Machine (or Build Server):**
+
+*   **Build the Image(s):**
+    *   Frontend: `cd frontend && docker build -t kanban-frontend:latest .`
+    *   Backend: (If you build it from source) `cd backend_source_dir && docker build -t kanban-app:latest .`
+*   **Log in to Your Docker Registry:**
+    *   **Docker Hub:**
+        ```bash
+        docker login
+        # Enter your Docker Hub username and password/access token
+        ```
+    *   **AWS ECR, Google GCR, Azure ACR, GitLab Registry, etc.:**
+        Follow your specific registry provider's instructions for logging in via the Docker CLI. This often involves `aws ecr get-login-password`, `gcloud auth configure-docker`, or `az acr login`.
+*   **Tag the Image(s) for the Registry:**
+    Before pushing, you need to tag your image with the full registry path:
+    ```bash
+    # For frontend (replace <your_registry_user> with your Docker Hub username or full registry path)
+    docker tag kanban-frontend:latest <your_registry_user>/kanban-frontend:latest
+
+    # For backend (replace <your_registry_user> with your Docker Hub username or full registry path)
+    docker tag kanban-app:latest <your_registry_user>/kanban-app:latest 
+    ```
+    *   Example for Docker Hub: `docker tag kanban-frontend:latest mydockerhubuser/kanban-frontend:latest`
+    *   Example for AWS ECR: `docker tag kanban-frontend:latest 123456789012.dkr.ecr.us-east-1.amazonaws.com/kanban-frontend:latest`
+*   **Push the Image(s) to the Registry:**
+    ```bash
+    # For frontend
+    docker push <your_registry_user>/kanban-frontend:latest
+
+    # For backend
+    docker push <your_registry_user>/kanban-app:latest
+    ```
+
+**2. On Your Cloud Server:**
+
+*   **Log in to the Docker Registry (if it's a private registry):**
+    Use the same `docker login` command or provider-specific login method as on your local machine if you pushed to a private registry.
+*   **Pull the Image(s) from the Registry:**
+    ```bash
+    # For frontend
+    docker pull <your_registry_user>/kanban-frontend:latest
+
+    # For backend
+    docker pull <your_registry_user>/kanban-app:latest
+    ```
+*   **(Optional) Re-tag the Image for Local Use:**
+    If you want to use simpler local tags (like `kanban-frontend:latest` or `kanban-app:latest` in your `docker-compose.yml` without the full registry path), you can re-tag the pulled image:
+    ```bash
+    # For frontend
+    docker tag <your_registry_user>/kanban-frontend:latest kanban-frontend:latest
+
+    # For backend
+    docker tag <your_registry_user>/kanban-app:latest kanban-app:latest
+    ```
+    This step is often unnecessary if your `docker-compose.yml` uses the full image path from the registry.
+
+**Pros:**
+*   Image Consistency: The same image built and tested locally (or by CI) is deployed.
+*   Build Offloading: Server resources are not used for building.
+*   Versioning & Rollbacks: Registries make it easy to manage image versions and roll back if needed.
+*   Scalability: Easy to deploy the same image to multiple servers.
+
+**Cons:**
+*   Requires a Docker registry (public or private).
+*   More steps involved (tag, push, pull).
+
+#### Choosing an Option
+
+*   **Build on Server:** Might be acceptable for very simple, single-server deployments or quick tests where setting up a registry seems like overkill.
+*   **Docker Registry:** Highly recommended for production, multi-server deployments, CI/CD integration, or when you want better image management and consistency.
+
+The same principles apply to making your backend Docker image (`kanban-app:latest`) available on the server, especially if you are using Docker Compose, which will expect to find this image.
+
+### Running the Frontend Container on the Cloud Server
+
+Once the `kanban-frontend:latest` Docker image (and `kanban-app:latest` for the backend, if using Docker Compose) is available on your cloud server, you can run the application.
+
+**Prerequisites:**
+
+*   The Docker images (`kanban-frontend:latest` and, if applicable, `kanban-app:latest`) are present on the server (either built directly or pulled from a registry).
+*   The `frontend/nginx.conf` file must be correctly configured **within the `kanban-frontend:latest` image** for how it will connect to the backend. This means if you need Nginx to proxy API requests, these changes should have been made to `frontend/nginx.conf` *before* the image was built.
+
+#### A. Standalone Mode (`docker run` - Frontend Only)
+
+This method runs only the frontend container. It requires careful consideration of how the frontend (served by Nginx in the container) will reach the backend API.
+
+**Basic Command (assuming Nginx will serve on port 80 inside container):**
+
+```bash
+docker run -d -p 80:80 --name kanban-frontend-prod kanban-frontend:latest
+```
+*   `-p 80:80`: Maps port 80 on your host (cloud server) to port 80 inside the container. This makes your application accessible on the standard HTTP port. Adjust the host port if port 80 is already in use (e.g., `-p 8080:80`).
+*   `--name kanban-frontend-prod`: A descriptive name for your production frontend container.
+
+**Crucial: Backend API URL Configuration & `nginx.conf`**
+
+Since the `nginx.conf` is baked into the `kanban-frontend:latest` image, its configuration for API proxying is fixed at build time.
+
+*   **Scenario 1: Backend also Dockerized on the same server, connected via a Docker network (Recommended for co-located services):**
+    1.  Create a Docker network: `docker network create my-app-network`
+    2.  Run your backend container on this network: `docker run ... --network my-app-network --name actual-backend-container kanban-app:latest`
+    3.  **Before building `kanban-frontend:latest`**, your `frontend/nginx.conf` must be configured to proxy to the backend container's service name and port on this network. Example:
+        ```nginx
+        # Inside frontend/nginx.conf, location /api/ block
+        proxy_pass http://actual-backend-container:5000/api/; 
+        # Replace 'actual-backend-container' if your backend container has a different name on the network.
+        # Port 5000 is the port the backend listens on *inside its container*.
+        ```
+    4.  Build the `kanban-frontend:latest` image with this updated `nginx.conf`.
+    5.  Run the frontend container on the same network: `docker run -d -p 80:80 --network my-app-network --name kanban-frontend-prod kanban-frontend:latest`
+
+*   **Scenario 2: Backend running directly on the cloud server's host (not containerized), or in a container mapped directly to a host port:**
+    *   If the backend is reachable at `http://<cloud_server_IP_or_localhost_equivalent>:5000` from *within* the frontend container's network namespace.
+    *   Your `frontend/nginx.conf` (baked into the image) would need to `proxy_pass http://<host_ip_or_gateway_ip>:5000/api/;`. The exact IP to use can be tricky (e.g., `172.17.0.1` for default Docker bridge gateway, or a specific host IP). This is less portable.
+    *   Alternatively, if the `nginx.conf` CSP allows `connect-src 'self' http://your_server_ip:5000;` and your backend is exposed on `your_server_ip:5000`, the browser could make direct calls, but this is less common for production setups.
+
+*   **Scenario 3: Backend is on a different server/public URL:**
+    *   Your `frontend/nginx.conf` (baked into the image) should be configured to `proxy_pass https://your.backend.api.domain.com/api/;`.
+    *   Alternatively, if the frontend JavaScript directly calls the public API URL, the `nginx.conf` just needs to serve static files, and its CSP must allow connections to that public API domain.
+
+**General Advice for Standalone `docker run`:** For standalone mode, it's often simpler if the `nginx.conf` is configured to point to an externally accessible backend URL (Scenario 3) or if the backend is also containerized and a reverse proxy setup (like Nginx proxying) is well-defined before building the frontend image.
+
+#### B. Using Docker Compose (Recommended for co-located backend)
+
+Docker Compose simplifies running multi-container applications, including the frontend and backend, and handles network creation and service discovery.
+
+1.  **Ensure `docker-compose.yml` is Present:**
+    Make sure your `docker-compose.yml` file (as described in the "Running with Docker" section) is on your cloud server, typically in your project's root directory.
+2.  **Ensure `nginx.conf` is Correct for Proxying:**
+    As detailed in the "Docker Compose" section of "Running with Docker", your `frontend/nginx.conf` **must be updated** to include the `proxy_pass http://backend:5000/...;` directives *before* the frontend image is built. The `backend` service name in `proxy_pass` refers to the backend service defined in your `docker-compose.yml`.
+3.  **Navigate to Directory:**
+    In your server's terminal, navigate to the directory containing your `docker-compose.yml` file.
+4.  **Run Docker Compose:**
+    ```bash
+    docker-compose up -d --build
+    ```
+    *   `--build`: This is important to ensure the `kanban-frontend` image is built using the (potentially updated for proxying) `frontend/nginx.conf`.
+    *   `-d`: Runs in detached mode.
+
+**Explanation with Docker Compose:**
+Docker Compose creates a default network (or uses the one specified, like `kanban-net`) and allows services to communicate using their service names. The `proxy_pass http://backend:5000/api/;` in `nginx.conf` works because Docker's internal DNS resolves `backend` to the IP address of the `backend` service's container on the shared Docker network. The port `5000` should be the port your backend application listens on *inside its container*.
+
+#### Verifying the Deployment
+
+1.  **Access via IP/Domain:**
+    Open a web browser and navigate to your cloud server's public IP address or configured domain name (e.g., `http://your_cloud_server_ip` if you mapped to port 80, or `http://your_cloud_server_ip:8080` if you mapped to 8080).
+2.  **Check Docker Logs:**
+    *   **Standalone:** `docker logs kanban-frontend-prod` (and logs for your backend container if run separately).
+    *   **Docker Compose:** `docker-compose logs -f frontend` and `docker-compose logs -f backend`.
+    Look for any error messages.
+
+### Firewall Configuration
+
+Cloud servers and the operating systems running on them typically employ firewalls to control incoming and outgoing network traffic. By default, most firewalls block all incoming traffic unless explicitly allowed. For your Kanban application to be accessible from the internet, you need to configure the firewall to allow traffic on the port your frontend is exposed on.
+
+*   If you mapped your frontend container to port 80 (e.g., `docker run -p 80:80 ...` or `ports: - "80:80"` in `docker-compose.yml`), you'll need to allow HTTP traffic.
+*   If you later set up HTTPS, you'll need to allow traffic on port 443.
+
+There are generally two layers of firewalls to consider:
+
+#### 1. Cloud Provider Firewalls
+
+Most cloud providers (e.g., AWS, Google Cloud, Azure) have their own network firewall systems:
+
+*   **AWS:** Security Groups
+*   **Google Cloud:** VPC Firewall Rules
+*   **Azure:** Network Security Groups (NSGs)
+
+These are configured through the cloud provider's web console or CLI. You must ensure that these provider-level firewalls allow incoming traffic on the necessary ports (e.g., 80 for HTTP, 443 for HTTPS) to your server instance. Consult your specific cloud provider's documentation for instructions on how to manage these rules.
+
+#### 2. Linux Server Firewalls (e.g., `ufw` for Ubuntu)
+
+In addition to the cloud provider's firewall, the server's operating system often has its own firewall software. For Ubuntu servers, `ufw` (Uncomplicated Firewall) is commonly used.
+
+Here are common `ufw` commands:
+
+1.  **Check `ufw` Status:**
+    See if `ufw` is active and view existing rules.
+    ```bash
+    sudo ufw status
+    ```
+    If it's inactive, you might see `Status: inactive`.
+
+2.  **Allow SSH (Crucial!):**
+    **Before enabling `ufw` for the first time, ensure SSH access is allowed to prevent losing remote access to your server.**
+    ```bash
+    sudo ufw allow OpenSSH 
+    # 'OpenSSH' is a predefined application profile. Alternatively, use the port number:
+    # sudo ufw allow 22/tcp 
+    ```
+
+3.  **Enable `ufw` (if inactive):**
+    If `ufw` is inactive, enable it. This will start enforcing the rules.
+    ```bash
+    sudo ufw enable
+    ```
+    It will prompt for confirmation. If you haven't allowed SSH, **this command could disconnect your current SSH session if SSH traffic isn't already permitted.**
+
+4.  **Allow HTTP (Port 80):**
+    To allow incoming traffic for your web application served over HTTP:
+    ```bash
+    sudo ufw allow 80/tcp
+    # Or, using the service name:
+    # sudo ufw allow http
+    ```
+
+5.  **Allow HTTPS (Port 443 - for future use):**
+    If you plan to set up HTTPS later (recommended for production):
+    ```bash
+    sudo ufw allow 443/tcp
+    # Or, using the service name:
+    # sudo ufw allow https
+    ```
+
+6.  **Reload or Re-enable `ufw`:**
+    After adding or changing rules, reload `ufw` to apply them:
+    ```bash
+    sudo ufw reload
+    ```
+    If you just enabled `ufw` using `sudo ufw enable`, the rules are typically applied automatically.
+
+7.  **List Current Rules:**
+    To see a numbered list of current rules:
+    ```bash
+    sudo ufw status numbered
+    ```
+    This is useful if you need to delete a specific rule by its number (e.g., `sudo ufw delete 1`).
+
+#### Important Considerations:
+
+*   **Order Matters:** Firewall rules are often processed in order. Ensure your "allow" rules are correctly placed, especially if you have more complex "deny" rules.
+*   **Security Best Practices:** Only open the ports that are absolutely necessary.
+*   **SSH Access:** Always double-check your SSH allow rule (`OpenSSH` or `22/tcp`) before enabling or modifying `ufw` rules to avoid locking yourself out of the server. If you do get locked out, you might need to use your cloud provider's console access or recovery options.
+*   **Both Firewalls:** Remember that traffic might need to be allowed at *both* the cloud provider firewall level and the server OS firewall level (like `ufw`).
+
+Proper firewall configuration is critical for making your application accessible and securing your server.
+
+### Production Considerations: Domain Name and HTTPS
+
+While the previous sections guide you on deploying the application to a cloud server using Docker, a production-ready setup typically involves additional steps for professionalism, security, and usability.
+
+#### 1. Domain Name
+
+Currently, you would access your application via the cloud server's IP address (e.g., `http://your_cloud_server_ip:8080`). For a professional and user-friendly experience, you'll want to use a custom domain name (e.g., `www.yourkanbanapp.com`).
+
+This process generally involves:
+
+*   **Registering a Domain Name:**
+    *   You need to purchase a domain name from a domain name registrar (e.g., GoDaddy, Namecheap, Google Domains, Cloudflare Registrar, etc.).
+*   **Configuring DNS Records:**
+    *   Once you have a domain, you'll need to configure its DNS (Domain Name System) records through your registrar or DNS provider.
+    *   Typically, this means creating an **'A' record** that points your domain (or a subdomain like `app.yourdomain.com`) to your cloud server's public IP address.
+    *   DNS changes can take some time to propagate globally (from a few minutes to 48 hours).
+
+#### 2. HTTPS (SSL/TLS Certificates)
+
+Serving your application over **HTTPS** is crucial for security. HTTPS encrypts the data exchanged between your users' browsers and your server, protecting sensitive information and verifying the server's authenticity.
+
+*   **Nginx for HTTPS:** The Nginx server already configured in your `frontend` Docker container is capable of handling HTTPS/SSL termination.
+*   **Let's Encrypt:** A popular and free way to obtain SSL/TLS certificates is by using [Let's Encrypt](https://letsencrypt.org/), which is a free, automated, and open Certificate Authority (CA).
+*   **Certbot:** The [Certbot](https://certbot.eff.org/) tool can automate the process of obtaining certificates from Let's Encrypt and configuring Nginx to use them. It can also handle certificate renewals.
+
+Setting up HTTPS with Nginx and Let's Encrypt typically involves:
+
+1.  **Installing Certbot:** Usually installed on the host cloud server (or potentially run from a dedicated Docker container).
+2.  **Obtaining a Certificate:** Running Certbot with its Nginx plugin (or webroot plugin) to request and validate a certificate for your domain.
+3.  **Configuring Nginx for SSL:**
+    *   Modifying your `frontend/nginx.conf` to:
+        *   Listen on port 443 for SSL connections (`listen 443 ssl;`).
+        *   Specify the paths to your SSL certificate (`ssl_certificate`) and private key (`ssl_certificate_key`) provided by Certbot.
+        *   Configure recommended SSL/TLS protocols and ciphers.
+        *   Optionally, set up a redirect from HTTP (port 80) to HTTPS (port 443).
+    *   **Important:** If you modify `nginx.conf`, you'll need to rebuild your `kanban-frontend` Docker image. Alternatively, for more advanced setups, SSL certificates and the updated Nginx configuration can be mounted into the running container from the host server.
+4.  **Firewall Update:** Ensure your firewall (both cloud provider and server OS like `ufw`) allows incoming traffic on port 443 (HTTPS).
+
+#### Out of Scope for This Guide
+
+Detailed instructions for DNS configuration, registering domain names, and the full process of setting up HTTPS/SSL with Let's Encrypt and Nginx are extensive and can vary based on your specific domain registrar, cloud provider, and server OS.
+
+These steps are considered **essential next steps for any production deployment** but are beyond the scope of this initial deployment guide.
+
+We recommend searching for specific guides such as:
+*   "How to point a domain name to my cloud server IP"
+*   "Secure Nginx with Let's Encrypt on [Your Server OS, e.g., Ubuntu]"
+*   "Let's Encrypt Docker Nginx" (for container-focused setups)
+
+These resources will provide more in-depth, step-by-step instructions tailored to various environments.
+
+---
+
 ## Backend API Specification
 
 The original content of the README started here. It has been preserved below.
