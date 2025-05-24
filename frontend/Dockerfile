@@ -8,7 +8,7 @@ COPY package*.json ./
 # COPY yarn.lock ./ # Uncomment if using yarn
 
 # Install dependencies
-RUN npm install
+RUN npm install --registry=https://registry.npmmirror.com
 # RUN yarn install # Uncomment if using yarn
 
 # Copy the rest of the application code
