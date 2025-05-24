@@ -41,6 +41,8 @@ A Kanban board application for managing projects, stages, tasks, and subtasks. T
 *   **Backend:**
     *   A running backend server as per the [Backend API Specification](#backend-api-specification) provided below.
     *   (Example: Python 3.x, Flask, and any dependencies listed in the backend's `requirements.txt`)
+*   **Docker (Optional, for containerized deployment):**
+    *   [Docker Installed](https://docs.docker.com/get-docker/)
 
 ## Backend Setup & Running (Placeholder Instructions)
 
@@ -121,6 +123,271 @@ A Kanban board application for managing projects, stages, tasks, and subtasks. T
     yarn build
     ```
     This will create a `dist` folder in the `frontend` directory with the optimized static assets.
+
+## Running with Docker
+
+This section provides instructions for building and running the frontend application using Docker and Docker Compose. This is a recommended approach for creating portable environments and simplifying deployment.
+
+### A. Building the Frontend Docker Image
+
+These instructions explain how to build the Docker image for the frontend application. This process packages the React application and an Nginx server, configured to serve the application, into a portable Docker image.
+
+#### Prerequisite
+
+*   **Docker Installed:** Ensure Docker is installed and running on your system. You can find installation instructions for your operating system on the [official Docker website](https://docs.docker.com/get-docker/).
+
+#### Build Command
+
+1.  **Navigate to the Frontend Directory:**
+    Open your terminal or command prompt and change your current directory to the `frontend` directory, where the `Dockerfile` is located.
+    ```bash
+    cd path/to/your-project/frontend 
+    # Replace 'path/to/your-project/' with the actual path to your project root
+    ```
+
+2.  **Run the Docker Build Command:**
+    Execute the following command to build the Docker image. This command:
+    *   `docker build`: Invokes the Docker build process.
+    *   `-t kanban-frontend:latest`: Tags the image with a name (`kanban-frontend`) and a tag (`latest`). You can customize these. Using a meaningful tag helps in managing different versions of your image.
+    *   `.`: Specifies that the build context (the set of files Docker needs to build the image, including the `Dockerfile`) is the current directory.
+
+    ```bash
+    docker build -t kanban-frontend:latest .
+    ```
+
+#### Context
+
+Running the `docker build` command executes the instructions defined in the `frontend/Dockerfile`. This multi-stage Dockerfile will:
+
+*   **Stage 1 (Build Stage):**
+    *   Use a Node.js environment to install all frontend dependencies (`npm install`).
+    *   Build the React application for production (`npm run build`), creating optimized static assets in the `/app/dist` directory within the build stage.
+*   **Stage 2 (Serve Stage):**
+    *   Use an Nginx base image.
+    *   Copy the static assets built in Stage 1 (from `/app/dist`) into Nginx's default HTML serving directory (`/usr/share/nginx/html`).
+    *   Copy the custom `nginx.conf` file (also from the `frontend` directory) into Nginx's configuration directory, ensuring Nginx is set up to serve the Single Page Application correctly.
+
+The result of this process is a Docker image named `kanban-frontend` (or your chosen name) with the tag `latest`. This image contains your compiled frontend application and a configured Nginx web server ready to serve it.
+
+### B. Running the Standalone Frontend Container
+
+Once you have built the `kanban-frontend:latest` Docker image, you can run it as a container.
+
+#### 1. Basic Run Command
+
+To run the frontend container, use the `docker run` command. This command starts your Nginx server, which serves the React application.
+
+```bash
+docker run -d -p 8080:80 --name kanban-frontend-container kanban-frontend:latest
+```
+
+*   `-d`: Runs the container in detached mode (in the background).
+*   `-p 8080:80`: Maps port 8080 on your host machine to port 80 inside the container (Nginx serves on port 80 by default). You can change `8080` to any other available port on your host.
+*   `--name kanban-frontend-container`: Assigns a recognizable name to your running container. This is optional but helpful for managing containers.
+*   `kanban-frontend:latest`: Specifies the image to run.
+
+After running this command, the frontend application should be accessible in your web browser at `http://localhost:8080` (or whichever host port you chose).
+
+#### 2. Connecting to the Backend API
+
+The frontend application needs to communicate with the backend API. The way this is configured depends on where your backend is running relative to your frontend Docker container.
+
+**Important Note on `nginx.conf` for Standalone Mode:**
+The current `nginx.conf` included in the frontend Docker image (from `frontend/nginx.conf`) has a Content Security Policy (CSP) header:
+`Content-Security-Policy "default-src 'self'; ... connect-src 'self' http://localhost:5000;" always;`
+This policy tells the user's browser that it's allowed to make requests (e.g., API calls) to `'self'` (the frontend's own origin) and `http://localhost:5000`.
+
+*   **This means the frontend application, when running in the browser, will attempt to make API calls directly to `http://localhost:5000/api/...` (or `/hello`).**
+*   For this to work, your backend API server must be running and accessible at `http://localhost:5000` **from the perspective of the user's machine/browser**, not from within the frontend Docker container.
+*   If Nginx needs to act as a reverse proxy for API calls (e.g., to route calls from `http://localhost:8080/api` to a backend container on a shared Docker network), the `frontend/nginx.conf` file **must be modified** to include the appropriate `location /api/ { proxy_pass ... }` directives **before building the Docker image**. See the Docker Compose section for an example of such proxy configuration.
+
+**Scenarios:**
+
+*   **Scenario A: Backend Running Directly on Your Host Machine (e.g., during development)**
+    *   If your backend server is running on your local machine and is listening on `localhost:5000` (or `0.0.0.0:5000`), the current CSP and the frontend's API calls will work as the browser can reach `http://localhost:5000`.
+    *   No changes to the Docker run command or frontend configuration are strictly needed.
+
+*   **Scenario B: Backend Running in Another Docker Container on the Same Docker Network**
+    *   If your backend runs in a Docker container named, for example, `kanban-backend` and is on the same user-defined Docker network, the frontend container itself cannot directly use `http://kanban-backend:5000` for its API calls because these calls are made by the browser.
+    *   **To make this work with the current `nginx.conf` CSP, you would need to:**
+        1.  Ensure the `kanban-backend` container maps its port 5000 to `localhost:5000` on the host machine. For example, `docker run ... -p 5000:5000 kanban-backend`.
+        2.  The frontend container can then be run as described in the "Basic Run Command". The browser will make requests to `http://localhost:5000/api/...`, which will hit the backend container via the host's port mapping.
+    *   **Alternative (More Robust for Container-to-Container): Reverse Proxy with Nginx**
+        Modify `frontend/nginx.conf` to include proxy pass rules (see Docker Compose section for details) and run containers on the same network. This is generally preferred for containerized environments.
+
+*   **Scenario C: Backend is Publicly Accessible via a URL**
+    *   If your backend is, for example, at `https://api.mykanban.com`, you would need to:
+        1.  **Modify Frontend Code:** Change the API base URL in `frontend/src/services/api.js` to use this absolute URL.
+        2.  **Update CSP:** Modify the `Content-Security-Policy` in `frontend/nginx.conf` to allow connections to `https://api.mykanban.com`.
+        3.  Rebuild the frontend Docker image with these changes.
+
+**Runtime Configuration of API URL (Recommended for Maximum Flexibility - Advanced)**
+Refer to the previous subtask report for details on this advanced configuration. For the current setup, ensure your backend is accessible from the user's browser at `http://localhost:5000`.
+
+#### 3. Accessing the Application
+
+Once the container is running and your backend is accessible as described above:
+
+*   Open your web browser.
+*   Navigate to `http://localhost:8080` (or the host port you mapped in the `docker run` command).
+
+#### 4. Stopping and Removing the Container
+
+*   **To stop the container:**
+    ```bash
+    docker stop kanban-frontend-container
+    ```
+*   **To remove the container (after stopping):**
+    ```bash
+    docker rm kanban-frontend-container
+    ```
+
+### C. Using Docker Compose (Recommended for local development)
+
+Docker Compose is a tool for defining and running multi-container Docker applications. It simplifies the management of the frontend and backend services, especially when they need to communicate with each other.
+
+**Before you begin:**
+
+*   **File Creation:** You will need to create a file named `docker-compose.yml` in the root directory of your project (the same directory that contains the `frontend` and likely your backend source folder or where you manage your backend image).
+*   **Important Note on Container Naming and Existing Containers:** The `docker-compose.yml` defines *services* (e.g., `frontend`, `backend`). When you run `docker-compose up`, it will create *new* containers for these services. The `container_name` fields (e.g., `kanban-frontend`, `kanban-backend`) specify the names for these new containers managed by Docker Compose.
+    If you have an existing standalone container (like `kanban-app-container` which you might have started with `docker run`), the services defined in Docker Compose are separate. The `backend` service in this `docker-compose.yml` will use the image `kanban-app:latest` to start a *new* container.
+*   **Potential Port Conflicts:** If your existing standalone backend container (`kanban-app-container`) is already using host port 5000 (as might be the case if you followed earlier standalone run instructions for a backend), and the `backend` service in `docker-compose.yml` also maps to host port 5000 (e.g., `ports: - "5000:5000"`), you will encounter a port conflict. You should either:
+    a. Stop your standalone container (e.g., `docker stop kanban-app-container`) before running `docker-compose up -d`.
+    b. Change the host port mapping for the `backend` service in `docker-compose.yml` (e.g., to `ports: - "5001:5000"`) if you need both running, and adjust your access URLs accordingly.
+    For this guide, we assume you will stop any conflicting standalone containers to allow Docker Compose to manage the backend service on port 5000.
+
+#### 1. `docker-compose.yml` Example
+
+This file orchestrates the deployment of both the frontend and backend services. Save this content as `docker-compose.yml` in the root of your project directory.
+
+```yaml
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: ./frontend # Assumes Dockerfile is in ./frontend
+      dockerfile: Dockerfile
+    container_name: kanban-frontend
+    ports:
+      - "8080:80" # Expose frontend on host port 8080, mapping to container port 80
+    depends_on:
+      - backend
+    # Environment variables are not directly used by Nginx in this basic setup.
+    # Nginx configuration will be modified to proxy to the 'backend' service name.
+    # See the modified nginx.conf section.
+    # Example if frontend JavaScript needed to know the backend URL (not the case here as Nginx handles proxy):
+    # environment:
+    #   - REACT_APP_API_BASE_URL=http://localhost:8080/api # Browser sees this, Nginx proxies /api
+    networks:
+      - kanban-net
+
+  backend:
+    image: kanban-app:latest # !!! User should ensure this image is available (e.g., built locally or pulled) !!!
+    container_name: kanban-backend
+    ports:
+      - "5000:5000" # Maps host port 5000 to container port 5000 (backend's default listening port)
+    # Example environment variables for the backend (uncomment and adjust as needed)
+    # environment:
+    #   - DATABASE_URL=postgresql://user:password@db_host:5432/kanbandb
+    #   - FLASK_ENV=development
+    #   - SECRET_KEY=your_very_secret_key
+    #   # Add any other environment variables your backend requires
+    networks:
+      - kanban-net
+    # Example for persistent data if your backend uses a database (uncomment and adjust)
+    # volumes:
+    #   - backend_db_data:/var/lib/postgresql/data
+
+networks:
+  kanban-net:
+    driver: bridge
+
+# Example for persistent data volume (uncomment if used by backend)
+# volumes:
+#   backend_db_data:
+
+```
+
+#### 2. `nginx.conf` Modifications for Docker Compose Proxy
+
+For Docker Compose to work seamlessly with service discovery (e.g., the frontend Nginx proxying to `http://backend:5000`), Nginx must act as a reverse proxy for API calls.
+
+**Crucially, the `frontend/nginx.conf` file must be updated with these proxy configurations *before* you build the frontend Docker image using `docker build` or `docker-compose build`.** The `frontend/Dockerfile` copies this `nginx.conf` into the image during the build process.
+
+The relevant part of your `frontend/nginx.conf` should be modified as follows:
+
+```nginx
+# Inside server { ... } block
+
+    # Proxy API requests to the backend service
+    location /api/ {
+        proxy_pass http://backend:5000/api/; # 'backend' is the service name in docker-compose.yml
+                                            # The port '5000' should match the port your backend service listens on *inside its container*.
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Proxy /hello requests to the backend service
+    location = /hello { # Use '=' for exact match
+        proxy_pass http://backend:5000/hello;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Serve static files (frontend application)
+    location / {
+        root /usr/share/nginx/html;
+        index index.html index.htm;
+        try_files $uri $uri/ /index.html; # Crucial for Single Page Applications
+    }
+
+    # Content Security Policy (CSP) Update for Proxied Environment:
+    # If you have a CSP, ensure connect-src allows 'self' for proxied requests.
+    # Example:
+    # add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self';" always;
+    # This allows the browser to connect to its own origin ('self'), and Nginx handles forwarding to the backend.
+```
+
+**Explanation of `nginx.conf` changes:**
+*   **`proxy_pass http://backend:5000/api/;`**:
+    *   `backend`: This is the service name of your backend as defined in `docker-compose.yml`. Docker's internal DNS will resolve this to the backend container's IP address on the `kanban-net` network.
+    *   `5000`: This is the port your backend application is listening on *inside its container*.
+*   **CSP:** The `connect-src 'self';` directive in the CSP is appropriate when Nginx proxies all API calls, as the browser only ever communicates with the frontend's origin.
+
+#### 3. Instructions for Use (Docker Compose)
+
+1.  **Save Files:**
+    *   Ensure the `docker-compose.yml` content is saved in the project root.
+    *   Ensure `frontend/nginx.conf` has been updated with the proxy pass configurations as described above.
+2.  **Modify Placeholders in `docker-compose.yml`:**
+    *   **Crucial:** Ensure the `backend` service's `image` is set to `kanban-app:latest` (or your specific backend image name if different).
+    *   Adjust backend `ports`, `environment` variables, and `volumes` as needed.
+3.  **Start the Services:**
+    *   Open your terminal, navigate to the project root (where `docker-compose.yml` is).
+    *   Run:
+        ```bash
+        docker-compose up -d --build
+        ```
+        *   `--build`: Builds images before starting services (important for `frontend` if `nginx.conf` or frontend code changed).
+        *   `-d`: Detached mode.
+4.  **Accessing the Application:**
+    *   Frontend: `http://localhost:8080`
+5.  **Viewing Logs:**
+    ```bash
+    docker-compose logs -f
+    # docker-compose logs -f frontend
+    # docker-compose logs -f backend
+    ```
+6.  **Stopping the Services:**
+    ```bash
+    docker-compose down
+    # Add -v to remove volumes: docker-compose down -v
+    ```
 
 ---
 
